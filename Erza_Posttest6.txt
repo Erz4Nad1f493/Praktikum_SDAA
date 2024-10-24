@@ -1,0 +1,519 @@
+#include <iostream>
+#include <string>
+#include <stack>
+#include <queue>
+#include <cmath>
+
+using namespace std;
+
+struct barang {
+    int id;
+    string nama;
+    int jumlah;
+    float harga;
+    barang* next;
+};
+
+stack<barang*> stack_undo;
+queue<barang*> queue_barang;
+
+void tambah_barang(barang** head, int* jumlah_barang) {
+    barang* new_barang = new barang;
+    (*jumlah_barang)++;
+
+    new_barang->id = *jumlah_barang;
+
+    cout << "Masukkan nama barang: ";
+    cin >> new_barang->nama;
+
+    cout << "Masukkan jumlah barang: ";
+    cin >> new_barang->jumlah;
+
+    cout << "Masukkan harga barang: ";
+    cin >> new_barang->harga;
+
+    new_barang->next = NULL;
+
+    if (*head == NULL) {
+        *head = new_barang;
+    }
+    else {
+        barang* temp = *head;
+        while (temp->next != NULL) {
+            temp = temp->next;
+        }
+        temp->next = new_barang;
+    }
+
+    cout << "Barang berhasil ditambahkan ke gudang!\n";
+}
+
+void tampil_barang(barang* head) {
+    if (head == NULL) {
+        cout << "Tidak ada barang di gudang.\n";
+        return;
+    }
+
+    cout << "\nDaftar Barang di Gudang:\n";
+    cout << "ID\tNama\tJumlah\tHarga\n";
+
+    barang* temp = head;
+    while (temp != NULL) {
+        cout << temp->id << "\t" << temp->nama << "\t" << temp->jumlah << "\t" << temp->harga << endl;
+        temp = temp->next;
+    }
+}
+
+void update_barang(barang* head, int jumlah_barang) {
+    int id;
+    cout << "Masukkan ID barang yang akan diupdate: ";
+    cin >> id;
+
+    if (id < 1 || id > jumlah_barang) {
+        cout << "ID barang tidak ditemukan.\n";
+        return;
+    }
+
+    barang* temp = head;
+    while (temp != NULL && temp->id != id) {
+        temp = temp->next;
+    }
+
+    if (temp != NULL) {
+        cout << "Update nama barang: ";
+        cin >> temp->nama;
+
+        cout << "Update jumlah barang: ";
+        cin >> temp->jumlah;
+
+        cout << "Update harga barang: ";
+        cin >> temp->harga;
+
+        cout << "Barang berhasil diupdate!\n";
+    }
+}
+
+void hapus_barang(barang** head, int* jumlah_barang) {
+    int id;
+    cout << "Masukkan ID barang yang akan dihapus: ";
+    cin >> id;
+
+    if (id < 1 || id > *jumlah_barang) {
+        cout << "ID barang tidak ditemukan.\n";
+        return;
+    }
+
+    barang* temp = *head;
+    barang* prev = NULL;
+
+    if (temp != NULL && temp->id == id) {
+        *head = temp->next;
+        stack_undo.push(temp);
+        (*jumlah_barang)--;
+        cout << "Barang berhasil dihapus!\n";
+        return;
+    }
+
+    while (temp != NULL && temp->id != id) {
+        prev = temp;
+        temp = temp->next;
+    }
+
+    if (temp != NULL) {
+        prev->next = temp->next;
+        stack_undo.push(temp);
+        (*jumlah_barang)--;
+        cout << "Barang berhasil dihapus!\n";
+    }
+    else {
+        cout << "Barang tidak ditemukan.\n";
+    }
+}
+
+void undo_hapus(barang** head, int* jumlah_barang) {
+    if (stack_undo.empty()) {
+        cout << "Tidak ada barang yang bisa di-undo.\n";
+        return;
+    }
+
+    barang* last_deleted = stack_undo.top();
+    stack_undo.pop();
+
+    last_deleted->next = NULL;
+    (*jumlah_barang)++;
+
+    if (*head == NULL) {
+        *head = last_deleted;
+    }
+    else {
+        barang* temp = *head;
+        while (temp->next != NULL) {
+            temp = temp->next;
+        }
+        temp->next = last_deleted;
+    }
+
+    cout << "Barang dengan ID " << last_deleted->id << " berhasil dipulihkan!\n";
+}
+
+void terima_barang_baru() {
+    barang* new_barang = new barang;
+
+    cout << "Masukkan nama barang baru: ";
+    cin >> new_barang->nama;
+
+    cout << "Masukkan jumlah barang baru: ";
+    cin >> new_barang->jumlah;
+
+    cout << "Masukkan harga barang baru: ";
+    cin >> new_barang->harga;
+
+    new_barang->next = NULL;
+    queue_barang.push(new_barang);
+
+    cout << "Barang baru diterima dan dimasukkan ke antrian untuk diproses.\n";
+}
+
+void proses_barang_baru(barang** head, int* jumlah_barang) {
+    if (queue_barang.empty()) {
+        cout << "Tidak ada barang baru yang perlu diproses.\n";
+        return;
+    }
+
+    barang* new_barang = queue_barang.front();
+    queue_barang.pop();
+
+    (*jumlah_barang)++;
+    new_barang->id = *jumlah_barang;
+
+    if (*head == NULL) {
+        *head = new_barang;
+    }
+    else {
+        barang* temp = *head;
+        while (temp->next != NULL) {
+            temp = temp->next;
+        }
+        temp->next = new_barang;
+    }
+
+    cout << "Barang baru dengan ID " << new_barang->id << " berhasil diproses dan dimasukkan ke gudang.\n";
+}
+
+// Sorting Functions
+void merge(barang** headRef, barang* a, barang* b) {
+    if (!a) {
+        *headRef = b;
+        return;
+    }
+    else if (!b) {
+        *headRef = a;
+        return;
+    }
+
+    if (a->nama <= b->nama) {
+        *headRef = a;
+        merge(&(a->next), a->next, b);
+    }
+    else {
+        *headRef = b;
+        merge(&(b->next), a, b->next);
+    }
+}
+
+void split(barang* source, barang** frontRef, barang** backRef) {
+    barang* fast;
+    barang* slow;
+    slow = source;
+    fast = source->next;
+
+    while (fast != NULL) {
+        fast = fast->next;
+        if (fast != NULL) {
+            slow = slow->next;
+            fast = fast->next;
+        }
+    }
+
+    *frontRef = source;
+    *backRef = slow->next;
+    slow->next = NULL;
+}
+
+void mergeSort(barang** headRef) {
+    barang* head = *headRef;
+    barang* a;
+    barang* b;
+
+    if (head == NULL || head->next == NULL) {
+        return;
+    }
+
+    split(head, &a, &b);
+
+    mergeSort(&a);
+    mergeSort(&b);
+
+    merge(headRef, a, b);
+}
+
+void quickSort(barang** headRef) {
+    if (*headRef == NULL || (*headRef)->next == NULL) {
+        return;
+    }
+
+    barang* pivot = *headRef;
+    barang* less = NULL, * equal = NULL, * greater = NULL;
+
+    barang* current = *headRef;
+
+    while (current != NULL) {
+        if (current->harga < pivot->harga) {
+            current->next = less;
+            less = current;
+        }
+        else if (current->harga == pivot->harga) {
+            current->next = equal;
+            equal = current;
+        }
+        else {
+            current->next = greater;
+            greater = current;
+        }
+        current = current->next;
+    }
+
+    quickSort(&less);
+    quickSort(&greater);
+
+    *headRef = less;
+
+    if (equal != NULL) {
+        barang* temp = equal;
+        while (temp->next != NULL) {
+            temp = temp->next;
+        }
+        temp->next = pivot;
+        pivot->next = greater;
+        equal = less;
+    }
+    else {
+        *headRef = pivot;
+        pivot->next = greater;
+    }
+}
+
+// Searching Functions
+int fibonacciSearch(barang* head, int jumlah, int target) {
+    int fibMMm2 = 0; // (m-2)'th Fibonacci number
+    int fibMMm1 = 1; // (m-1)'th Fibonacci number
+    int fibM = fibMMm1 + fibMMm2; // m'th Fibonacci number
+
+    while (fibM < jumlah) {
+        fibMMm2 = fibMMm1;
+        fibMMm1 = fibM;
+        fibM = fibMMm1 + fibMMm2;
+    }
+
+    int offset = -1;
+
+    while (fibM > 1) {
+        int i = min(offset + fibMMm2, jumlah - 1);
+
+        barang* temp = head;
+        for (int j = 0; j < i; j++) {
+            temp = temp->next;
+        }
+
+        if (temp->jumlah < target) {
+            fibM = fibMMm1;
+            fibMMm1 = fibMMm2;
+            fibMMm2 = fibM - fibMMm1;
+            offset = i;
+        }
+        else if (temp->jumlah > target) {
+            fibM = fibMMm2;
+            fibMMm1 = fibMMm1 - fibMMm2;
+            fibMMm2 = fibM - fibMMm1;
+        }
+        else {
+            return i;
+        }
+    }
+
+    if (fibMMm1 && offset + 1 < jumlah) {
+        barang* temp = head;
+        for (int j = 0; j <= offset + 1; j++) {
+            temp = temp->next;
+        }
+        if (temp->jumlah == target) {
+            return offset + 1;
+        }
+    }
+
+    return -1;
+}
+
+int jumpSearch(barang* head, int jumlah, int target) {
+    int jump = sqrt(jumlah);
+    int prev = 0;
+
+    while (head != NULL && head->jumlah < target) {
+        prev = head->id;
+        for (int i = 0; i < jump && head != NULL; i++) {
+            head = head->next;
+        }
+        if (head == NULL) {
+            return -1;
+        }
+    }
+
+    while (prev < jumlah && head != NULL && head->jumlah < target) {
+        prev++;
+        head = head->next;
+    }
+
+    if (head != NULL && head->jumlah == target) {
+        return prev;
+    }
+
+    return -1;
+}
+
+bool boyerMooreSearch(barang* head, const string& pattern) {
+    int last[256];
+    for (int i = 0; i < 256; i++) {
+        last[i] = -1;
+    }
+
+    for (int i = 0; i < pattern.length(); i++) {
+        last[(int)pattern[i]] = i;
+    }
+
+    int n = 0; // current index in the linked list
+    while (head != NULL) {
+        if (head->nama.length() >= pattern.length()) {
+            int i = pattern.length() - 1;
+            int j = head->nama.length() - 1;
+            while (i >= 0 && j >= 0 && head->nama[j] == pattern[i]) {
+                i--;
+                j--;
+            }
+            if (i < 0) {
+                return true; // match found
+            }
+            int skip = last[(int)head->nama[j]] > -1 ? last[(int)head->nama[j]] : -1;
+            n += max(1, j - skip);
+        }
+        else {
+            n++;
+        }
+        head = head->next;
+    }
+
+    return false;
+}
+
+// Main Function
+int main() {
+    barang* head = NULL;
+    int jumlah_barang = 0;
+    int choice;
+
+    do {
+        cout << "\nMenu:\n";
+        cout << "1. Tambah Barang\n";
+        cout << "2. Tampilkan Barang\n";
+        cout << "3. Update Barang\n";
+        cout << "4. Hapus Barang\n";
+        cout << "5. Undo Hapus Barang\n";
+        cout << "6. Terima Barang Baru\n";
+        cout << "7. Proses Barang Baru\n";
+        cout << "8. Urutkan Barang\n";
+        cout << "9. Cari Barang\n";
+        cout << "10. Keluar\n";
+        cout << "Pilih opsi: ";
+        cin >> choice;
+
+        switch (choice) {
+        case 1:
+            tambah_barang(&head, &jumlah_barang);
+            break;
+        case 2:
+            tampil_barang(head);
+            break;
+        case 3:
+            update_barang(head, jumlah_barang);
+            break;
+        case 4:
+            hapus_barang(&head, &jumlah_barang);
+            break;
+        case 5:
+            undo_hapus(&head, &jumlah_barang);
+            break;
+        case 6:
+            terima_barang_baru();
+            break;
+        case 7:
+            proses_barang_baru(&head, &jumlah_barang);
+            break;
+        case 8:
+            mergeSort(&head);
+            cout << "Barang berhasil diurutkan berdasarkan nama.\n";
+            break;
+        case 9: {
+            int search_choice;
+            cout << "Pilih metode pencarian:\n";
+            cout << "1. Fibonacci Search\n";
+            cout << "2. Jump Search\n";
+            cout << "3. Boyer-Moore Search\n";
+            cout << "Pilih opsi: ";
+            cin >> search_choice;
+
+            if (search_choice == 1) {
+                int target;
+                cout << "Masukkan jumlah barang yang dicari: ";
+                cin >> target;
+                int index = fibonacciSearch(head, jumlah_barang, target);
+                if (index != -1) {
+                    cout << "Barang ditemukan pada index " << index << ".\n";
+                }
+                else {
+                    cout << "Barang tidak ditemukan.\n";
+                }
+            }
+            else if (search_choice == 2) {
+                int target;
+                cout << "Masukkan jumlah barang yang dicari: ";
+                cin >> target;
+                int index = jumpSearch(head, jumlah_barang, target);
+                if (index != -1) {
+                    cout << "Barang ditemukan pada index " << index << ".\n";
+                }
+                else {
+                    cout << "Barang tidak ditemukan.\n";
+                }
+            }
+            else if (search_choice == 3) {
+                string pattern;
+                cout << "Masukkan nama barang yang dicari: ";
+                cin >> pattern;
+                if (boyerMooreSearch(head, pattern)) {
+                    cout << "Barang ditemukan.\n";
+                }
+                else {
+                    cout << "Barang tidak ditemukan.\n";
+                }
+            }
+            break;
+        }
+        case 10:
+            cout << "Keluar dari program.\n";
+            break;
+        default:
+            cout << "Pilihan tidak valid. Silakan coba lagi.\n";
+        }
+    } while (choice != 10);
+
+    return 0;
+}
